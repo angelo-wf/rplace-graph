@@ -1,17 +1,4 @@
 
-let canvas = el("out");
-let ctx = canvas.getContext("2d");
-let imgData = ctx.createImageData(2000, 2000);
-
-let vals;
-
-// start: 0
-// expansion 1: 99900000 (27:45)
-// expansion 2: 195900000 (54:25)
-// end: 300600000 (83:30)
-
-let tempNum = 0;
-
 const temps = [
   { // Star Wars (design 1)
     x: 573,
@@ -20,8 +7,6 @@ const temps = [
     height: 141,
     startTime: 0,
     endTime: 160800000,
-    templateX: -1,
-    templateY: 0,
     graphCol: 29
   },
   { // Star Wars (desing 2, logo white)
@@ -31,8 +16,6 @@ const temps = [
     height: 141,
     startTime: 160800000,
     endTime: 300600000,
-    templateX: -1,
-    templateY: 0,
     graphCol: 29
   },
   { // MLP (design 1)
@@ -125,6 +108,20 @@ const temps = [
   },
 ];
 
+let canvas = el("out");
+let ctx = canvas.getContext("2d");
+let imgData = ctx.createImageData(2000, 2000);
+
+let vals;
+
+// start: 0
+// expansion 1: 99900000 (27:45)
+// expansion 2: 195900000 (54:25)
+// whiteout: 295500000 (82:05)
+// end: 300600000 (83:30)
+
+let tempNum = 0;
+
 const colors = [
   "#000000", "#00756F", "#009EAA", "#00A368", "#00CC78", "#00CCC0", "#2450A4", "#3690EA",
   "#493AC1", "#515252", "#51E9F4", "#6A5CFF", "#6D001A", "#6D482F", "#7EED56", "#811E9F",
@@ -194,6 +191,7 @@ function handleTemplate(temp) {
   let results = getData(temp, data);
   let barTime = 300;
   for(let i = 0; i < results.length; i += barTime) {
+    if(i + barTime - 1 >= results.length) break;
     let avg = 0;
     for(let j = i; j < i + barTime; j++) {
       avg += results[j];
@@ -213,7 +211,7 @@ function getData(temp, data) {
 
   let pixelCount = temp.width * temp.height;
   let alpha = [];
-  if(temp.templateX >= 0) {
+  if(temp.templateX !== undefined) {
     [pixelCount, alpha] = getAlpha(temp);
     for(let i = 0; i < temp.width * temp.height; i++) {
       ctx.fillStyle = alpha[i] ? "#000000" : "#cccccc";
@@ -226,8 +224,11 @@ function getData(temp, data) {
     pixels[i] = 31;
   }
 
+  let startTime = (temp.startTimeGraph !== undefined) ? temp.startTimeGraph : temp.startTime;
+  let endTime = (temp.endTimeGraph !== undefined) ? temp.endTimeGraph : temp.endTime;
+
   // move forward until past startTime
-  while(time < temp.startTime) {
+  while(time < startTime) {
     let c = vals[idx++];
     time = vals[idx++];
     let x = (c >>> 21) & 0x7ff;
@@ -245,7 +246,7 @@ function getData(temp, data) {
   // progress through every second and compare with data
   let targetTime = time + 1000;
   let results = [];
-  while(time < temp.endTime) {
+  while(time < endTime) {
     while(time < targetTime) {
       if(idx >= vals.length) {
         time = targetTime;
@@ -267,7 +268,7 @@ function getData(temp, data) {
     // calculate ratio correct pixels according to data
     let correct = 0;
     for(let i = 0; i < temp.width * temp.height; i++) {
-      if(alpha[i] || temp.templateX < 0) {
+      if(alpha[i] || temp.templateX === undefined) {
         if(pixels[i] === data[i]) correct++;
       }
     }
